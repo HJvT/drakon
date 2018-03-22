@@ -8,11 +8,16 @@
 
 module CPlusPlusParser
 where
-import Parsec
-import ParsecExpr
+import Text.Parsec
+import Text.Parsec.Expr         ( Assoc(..)
+                                , buildExpressionParser
+                                , Operator(..)
+                                )
+import Text.Parsec.String       ( Parser
+                                )
 import CPlusPlusLexer
 import CPlusPlus
-import Monad
+import Control.Monad
 
 -----------------------------------------------------------
 -- A program is a list of external declarations
@@ -30,7 +35,7 @@ declarationExternal = try (
     declarationExtOrMember False
 --    <|> asmDeclaration
     <|> do l <- linkageSpec
-	   return l )
+           return l )
     <?> "external declaration"
 
 -- declaration_external_or_member:  Matches common elements of 
@@ -42,19 +47,19 @@ declarationExtOrMember :: Bool -> Parser String
 declarationExtOrMember memberDecl =
     do declaration_SC_or_DM_Seq
        option "" (do ctorDeclarator
-	             do ctorInitializer
-	                if (memberDecl) then genericBlock
+                     do ctorInitializer
+                        if (memberDecl) then genericBlock
                           else statementCompound
                      <|> semi)
        <|> do option [] declarationSpecifiers
-	      (semi <|> declaratorFunctionorInitList)
-	      
+              (semi <|> declaratorFunctionorInitList)
+              
 -- declaration_member.  Matches declarations that are allowed
 -- in struct/class/union.
 declarationMember = 
     declarationExtOrMember True
     <|> do accessSpecifier
-	   colon
+           colon
     <|> pragmaLine
 
 -- cv_qualifier.  Matches one of 'const' or 'volatile'.
@@ -63,7 +68,7 @@ cvQualifier =
     do reserved "const"
        return Const
     <|> do reserved "volatile"
-	   return Volatile
+           return Volatile
     <?> "const/volatile qualifier"
 
 cvQualifierSeq = many cvQualifier
@@ -73,9 +78,9 @@ cvQualifierSeq = many cvQualifier
 storageClassSpecifier =
     choice (map doSpec declWords)
     <?> "storage class specifier"
-	where doSpec x = do reserved x
-			    return (StorageClass x)
-	      declWords = ["auto", "register", "static", "extern", "typedef"]
+        where doSpec x = do reserved x
+                            return (StorageClass x)
+              declWords = ["auto", "register", "static", "extern", "typedef"]
 
 -- declaration_modifier: match any one of the possible
 -- declaration modifiers.  Semantic checks must be done to
@@ -83,9 +88,9 @@ storageClassSpecifier =
 declarationModifier =
     choice (map doSpec declWords)
     <?> "declaration modifier"
-	where doSpec x = do reserved x
-			    return (DeclarationModifier x)
-	      declWords = ["inline", "virtual", "friend", "explicit"]
+        where doSpec x = do reserved x
+                            return (DeclarationModifier x)
+              declWords = ["inline", "virtual", "friend", "explicit"]
 
 declaration_SC_or_DM_Seq =
     many1 ( storageClassSpecifier <|> declarationModifier )
@@ -93,12 +98,12 @@ declaration_SC_or_DM_Seq =
 declarationSpecifiers =
     do many cvQualifier
        do builtinTypeSpecifier
-	  many (builtinTypeSpecifier
-		<|> declarationSpecifiersQualifier)
+          many (builtinTypeSpecifier
+                <|> declarationSpecifiersQualifier)
        <|> do (    qualifiedType
-	       <|> classSpecifier
-	       <|> enumSpecifier)
-	      many declarationSpecifiersQualifier
+               <|> classSpecifier
+               <|> enumSpecifier)
+              many declarationSpecifiersQualifier
 
 -- declaration_specifiers_qualifier.  Match the part of the 
 -- declaration specifiers that is just a qualifier
@@ -114,12 +119,12 @@ declarationSpecifiersQualifier =
 declarationSpecifiersSimple =
     do many cvQualifier
        do builtinTypeSpecifier
-	  many (builtinTypeSpecifier
-		<|> declarationSpecifiersQualifier)
+          many (builtinTypeSpecifier
+                <|> declarationSpecifiersQualifier)
        <|> do (    qualifiedType
-	       <|> classSpecifierSimple
-	       <|> enumSpecifierSimple)
-	      many declarationSpecifiersQualifier
+               <|> classSpecifierSimple
+               <|> enumSpecifierSimple)
+              many declarationSpecifiersQualifier
 
 -- Rule: qualified_id.  Matches a qualified identifier ::T::B::foo
 -- (including dtor, "operator").  If allowType is true, then this 
@@ -132,9 +137,9 @@ qualifiedId allowType =
     do when allowType (option () (reserved "typename"))
        scopeOverride
        do isDtor <- option False (do symbol "~"
-				     return True )
-  	  id <- identifier
-	  return ""
+                                     return True )
+          id <- identifier
+          return ""
        <|> do reserved "operator"
               (operSimple <|> operConversion)
 
@@ -147,12 +152,12 @@ qualifiedId allowType =
 -- Rule: builtin_type_specifier.  Matches one of the built-in type
 --      specifiers (int/float/bool/etc).
 builtinTypes = ["char", "short", "int", "long", "signed"
-	      , "unsigned", "float", "double", "void"]
+              , "unsigned", "float", "double", "void"]
 builtinTypeSpecifier =
     choice (map doType builtinTypes)
     <?> "simple type name"
     where doType x = do reserved x
-			return (BuiltinType x)
+                        return (BuiltinType x)
 
 -- Rule: qualified_type.  Matches a type, optionally qualified by
 -- scope-resolution prefixes.
@@ -163,7 +168,7 @@ qualifiedType =
        return (MyType "")
 
 scopeOverride = do sepBy1 identifier (symbol "::")
-		   symbol "::"
+                   symbol "::"
 
 simpleTypeSpecifier =
     builtinTypeSpecifier <|> qualifiedType
@@ -177,11 +182,11 @@ simpleTypeSpecifier =
 enumSpecifier =
    do reserved "enum"
       ( do braces enumeratorList
-	   return (Enum "")
-	<|> do scopeOverride
-	       e <- identifier
+           return (Enum "")
+        <|> do scopeOverride
+               e <- identifier
                braces enumeratorList
-	       return (Enum e) )
+               return (Enum e) )
 -- or some tricky shit
    <?> "enum specifier"
 
@@ -199,11 +204,11 @@ enumSpecifierSimple =
 enumerator =
     do identifier
        option "" (do symbol "="
-		     exprConstant)
+                     exprConstant)
     <?> "enumerator"
 
 enumeratorList = sepBy1 enumerator comma
-	   <?> "enumerator list"
+           <?> "enumerator list"
 
 -- Rule: linkage_specification.  Matches stuff like
 --    extern "C" declaration
@@ -211,15 +216,15 @@ enumeratorList = sepBy1 enumerator comma
 --    extern "C" { declarations }
 linkageSpec =
       do reserved "extern"
-	 strLiteral -- like "C"
-	 braces declarationExternal
-	 return ""
---	 return ExternLinkage
+         strLiteral -- like "C"
+         braces declarationExternal
+         return ""
+--       return ExternLinkage
   <|> do reserved "extern"
-	 strLiteral
+         strLiteral
          declarationExternal
-	 return ""
---	 return ExternLinkage
+         return ""
+--       return ExternLinkage
   <?> "linkage specification"
 
 asmDeclaration =
@@ -243,18 +248,18 @@ declarator = try (
     option "" declaratorDirect
     <|> do declaratorPtr
            declarator
-		 )
+                 )
 
 -- declarator_direct.  Matches a named declarator without prefixes.
 -- This will match type names to handle odd cases like:
 --    typedef struct S { } S;
 -- This will match ctors to handle ctor declarations.
 declaratorDirect =
-    do qualifiedId False		-- must allow types and ctors
+    do qualifiedId False                -- must allow types and ctors
        declaratorSuffixes
     <|> do parens declarator
-	   declaratorSuffixes
-	   -- merge types here
+           declaratorSuffixes
+           -- merge types here
 
 -- Parenthesized declarators are hard for LL parsers,
 -- because we really need the type modification resulting
@@ -288,19 +293,19 @@ declaratorFunctionorInitList =
     do declarator
        do
           ( (do symbol "=" -- Optional initializer for the first declarator 
-	        initializer)
-	    <|> parens expressionList)
+                initializer)
+            <|> parens expressionList)
           comma -- Process more optional init-declarators
-	  declaratorInitList
-	  semi
+          declaratorInitList
+          semi
        <|> do --  Declarator with function body
            -- Choose statement_compound for external declarations, but use
            -- generic_block for member declarations because the fields have
            -- not all been seen yet.
-	     try (
-		  genericBlock
-		  <|> statementCompound
-		 )
+             try (
+                  genericBlock
+                  <|> statementCompound
+                 )
 
 -- Rule declarator_init.  Matches a declarator with initializers, and
 -- enters the declaration in the current scope.
@@ -313,23 +318,23 @@ declaratorInit =
 -- declarators.
 declaratorInitList =
     many (do comma
-	     declaratorInit)
+             declaratorInit)
 
 -- Rule: declarator_opt_abstract. A declarator that is optionally an 
 -- abstract declarator (i.e., one with no declarator TOK_ID).  
 -- Used for function parameters.
 declaratorOptAbstract =
     try (do declaratorPtr
-	     declaratorOptAbstract
-	  <|> do parens declaratorOptAbstract
-	         option () ( declaratorSuffixFunction
-			     <|> declaratorSuffixArray )
+             declaratorOptAbstract
+          <|> do parens declaratorOptAbstract
+                 option () ( declaratorSuffixFunction
+                             <|> declaratorSuffixArray )
               <|> identifier
-	          ( declaratorSuffixFunction
-		    <|> declaratorSuffixArray)
-	  <|> declaratorSuffixArray
-	  <|> return ()
-	)
+                  ( declaratorSuffixFunction
+                    <|> declaratorSuffixArray)
+          <|> declaratorSuffixArray
+          <|> return ()
+        )
 -- declarator_ptr:  Matches a pointer or reference.
 declaratorPtr =
     do 
@@ -367,9 +372,9 @@ declaratorSuffixes =
     do declaratorSuffixArray
        return ""
     <|> do option [] declaratorSuffixFunction
-	   return ""
+           return ""
     <|> do declaratorSuffixBitfield
-	   return ""
+           return ""
     <|> return ""
 
 -- Rule: parameterDeclaration.  Matches an optionally-assignment-
@@ -379,21 +384,21 @@ parameterDeclaration =
        declarationSpecifiersSimple
        declaratorOptAbstract
        option "" (do symbol "="
-		     expression)
+                     expression)
 
 -- Rule: parameter_list.  Matches a comma-separated list of optionally-
 -- assignment-initialized declarations, with an optional trailing ellipses.
 parameterList =
     commaSep1 parameterDeclaration
     option () (do option () comma
-	          ellipsis)
+                  ellipsis)
     <|> ellipsis
 
 -- Rule: parameter_list_opt.  Matches a an optional parameter_list
 parameterListOpt = 
     option () (reserved "void")
     <|> parameterList
-		     
+                     
 -- Rule: initializer.  Matches an initialization expression or
 -- list of expressions in curly braces.
 initializer=
@@ -456,9 +461,9 @@ accessSpecifier =
     do reserved "private"
        return Private
     <|> do reserved "protected"
-	   return Protected
+           return Protected
     <|> do reserved "private"
-	   return Private
+           return Private
 
 -- Rule: optor_simple.  Match any of the stock operator types, but 
 -- not the user-defined type conversion operators.
@@ -466,11 +471,11 @@ operSimple =
       reserved "new"
       option False squares (return True)
       <|> reserved "delete"
-	  option False squares (return True)
+          option False squares (return True)
       <|> choice (map doOp opNames)
       <?> "operator"
     where doOp x = do reservedOp x
-		      return ()
+                      return ()
 
 -- Rule: optor_conversion.  Match a user-defined type conversion specifier
 -- after an "operator" token.
@@ -513,7 +518,7 @@ operators =
                                   return (\x y -> "") 
                                   ) assoc
       prefix name     = Prefix (do var <- try (symbol name)
-				   return (\x -> ""))
+                                   return (\x -> ""))
                                                                    
 --       op name assoc   = Infix (do{ var <- try (symbol name)
 --                                   ; return (\x y -> App (App (Var [var]) x) y) 
@@ -527,7 +532,7 @@ applyExpression =
        return ""
  
 newExpression = do reserved "new"
-		   return ""
+                   return ""
       
 --simpleExpression :: Parser Expr    
 simpleExpression =

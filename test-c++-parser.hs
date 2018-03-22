@@ -1,10 +1,10 @@
 module Main
 where
-import System
-import IO
+-- import System
+-- import IO
 import CPlusPlusLexer
 import CPlusPlusParser
-
+import System.Environment    ( getArgs )
 
 
 main = do putStrLn "test-c++-parser"

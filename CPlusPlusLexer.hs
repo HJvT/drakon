@@ -2,9 +2,10 @@
 
 module CPlusPlusLexer
 where
-import Parsec
-import qualified ParsecToken as P
-import ParsecLanguage( javaStyle )
+import Text.Parsec
+import qualified Text.ParserCombinators.Parsec.Token as P
+import Text.Parsec.Language     ( javaStyle  )
+import Text.Parsec.String       ( Parser     )
 import CPlusPlus
 
 -- The language definition for C++
@@ -12,27 +13,27 @@ import CPlusPlus
 lexer = P.makeTokenParser cppDef
 
 opNames = [ "+", "-", "*", "/", "%", "^", "&", "|", "~", "!", "=", "<", ">",
-	    "+=", "-=", "*=", "/=", "%=", "^=", "&=", "|=", "<<", ">>",
-	    ">>=", "<<=", "==", "!=", "<=", ">=", "&&", "||", "++", "--",
-	    ",", "->*", "->"]
+            "+=", "-=", "*=", "/=", "%=", "^=", "&=", "|=", "<<", ">>",
+            ">>=", "<<=", "==", "!=", "<=", ">=", "&&", "||", "++", "--",
+            ",", "->*", "->"]
 
 cppDef = javaStyle
-	 { P.reservedNames  = ["class", "struct", "union"
-			      , "operator"
-			      , "case", "default"
+         { P.reservedNames  = ["class", "struct", "union"
+                              , "operator"
+                              , "case", "default"
                               , "private", "public", "protected"
-			      , "friend", "typedef", "auto", "register"
-			      , "static", "extern", "inline", "virtual"
+                              , "friend", "typedef", "auto", "register"
+                              , "static", "extern", "inline", "virtual"
                               , "new", "delete", "sizeof", "asm"
                               , "enum", "const", "volatile"
-			      , "char", "short", "int", "long", "signed"
-			      , "unsigned", "float", "double", "void"
-			      , "break", "continue", "do", "else", "for"
-			      , "goto", "if", "return", "switch", "while"
+                              , "char", "short", "int", "long", "signed"
+                              , "unsigned", "float", "double", "void"
+                              , "break", "continue", "do", "else", "for"
+                              , "goto", "if", "return", "switch", "while"
                             ]
-	 , P.reservedOpNames = opNames
-	 , P.caseSensitive  = True
-	 }
+         , P.reservedOpNames = opNames
+         , P.caseSensitive  = True
+         }
 
 
 identifier      = P.identifier lexer    
@@ -79,21 +80,21 @@ literal =
     <?> "literal"
 
 intLiteral  = do n <- natural
-		 return (IntLit n)
+                 return (IntLit n)
 floatLiteral  = do n <- float
-		   return (FloatLit n)
+                   return (FloatLit n)
 chrLiteral  = do c <- charLiteral
-		 return (CharLit c)
+                 return (CharLit c)
 strLiteral  = do s <- stringLiteral
-		 return (StringLit s)
+                 return (StringLit s)
 
 run :: Show a => Parser a -> String -> IO ()
 run p input
     = case (parse p "" input) of
-			      Left err -> do { putStr "parse error at"
-					       ; print err
-					       }
-			      Right x -> print x
+                              Left err -> do { putStr "parse error at"
+                                               ; print err
+                                               }
+                              Right x -> print x
 
 runLex :: Show a => Parser a -> String -> IO ()
 runLex p input
@@ -119,14 +120,14 @@ nestedNameStar = identifier
 fullNameStar = identifier
 
 hashIf = do symbol "#"
-	    symbol "if"
+            symbol "if"
 
 hashElif = do symbol "#"
-	    symbol "elif"
+            symbol "elif"
 
 hashEndif = do symbol "#"
-	    symbol "endif"
+            symbol "endif"
 
 hashEndif = do symbol "#"
-	    symbol "pragma"
+            symbol "pragma"
 -}

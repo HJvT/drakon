@@ -1,0 +1,4 @@
+dist-newstyle/
+*.hi
+*.exe
+.ghc.environment.*
